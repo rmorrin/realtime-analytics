@@ -1,8 +1,7 @@
 
-/**
+/*
  * Module dependencies.
  */
-
 var express = require('express');
 var routes = require('./routes');
 var user = require('./routes/user');
@@ -11,10 +10,11 @@ var path = require('path');
 var io = require('socket.io');
 var hbs = require('express-hbs');
 var googleapis = require('googleapis');
-var googleAuth = require('google-oauth-jwt');
 
-console.log('google api:' + googleapis);
 
+/*
+ * Express setup
+ */
 var app = express();
 
 // Use `.hbs` for extensions and find partials in `views/partials`.
@@ -46,6 +46,10 @@ var server = http.createServer(app).listen(app.get('port'), function(){
 	console.log('Express server listening on port ' + app.get('port'));
 });
 
+
+/*
+ * Socket.io setup
+ */
 var io = io.listen(server);
 
 io.sockets.on('connection', function(socket) {
@@ -55,35 +59,10 @@ io.sockets.on('connection', function(socket) {
 
 });
 
-// googleAuth.authenticate({
-//   // use the email address of the service account, as seen in the API console - string
-//   email: 'EMAIL_HERE',
-//   // use the PEM file generated from the downloaded .p12 key - string
-//   keyFile: 'key.pem',
-//   // specify the scopes you wish to access - array
-//   scopes: ['https://www.googleapis.com/auth/analytics.readonly']
-// }, function(err, token) {
-
-//   console.log(token);
-//   var auth = new googleapis.OAuth2Client();
-
-//   auth.setCredentials({
-//     access_token: token
-//   });
-
-//   googleapis.discover('analytics', 'v3').execute(function(err, client) {
-//     var resp = client.analytics.data.realtime
-//       .get({ ids: 'PROFILE_HERE', metrics: 'ga:activeVisitors'})
-//       .execute(function(err, resp) {
-//         console.log('ok');
-//         debugger;
-//       });
-//   });
-
-
-// });
-
-
+/*
+ * Google auth
+ */
+var timeout;
 var auth = new googleapis.auth.JWT(
   'EMAIL_HERE',
   'key.pem',
@@ -93,17 +72,41 @@ var auth = new googleapis.auth.JWT(
 
 auth.authorize(function(err, tokens) {
 
-    googleapis.discover('analytics', 'v3').execute(function(err, client) {
-
-      var resp = client.analytics.data.realtime
-      .get({ ids: 'PROFILE_HERE', metrics: 'ga:activeVisitors'})
-      .withAuthClient(auth)
-      .execute(function(err, resp) {
-        console.log('ok');
-        debugger;
-      })
-
-    });
+  if (!err) {
+    // start polling
+    console.log('Polling started');
+    timeout = setInterval(getData, 30000);
+  }
 
 });
 
+
+/*
+ * Helpers
+ */
+function getData() {
+
+  console.log('Fetching Active Visitors');
+
+  googleapis.discover('analytics', 'v3').execute(function(err, client) {
+
+    var resp = client.analytics.data.realtime
+    .get({ ids: 'PROFILE_HERE', metrics: 'ga:activeVisitors'})
+    .withAuthClient(auth)
+    .execute(function(err, resp) {
+
+      if (!err) {
+        console.log('Visitors: ' + resp.totalsForAllResults['ga:activeVisitors']);
+        broadcast(resp.totalsForAllResults['ga:activeVisitors']);
+      }
+
+
+    });
+
+  });
+
+}
+
+function broadcast (newVisitors) {
+  io.sockets.emit('visitors', { visitors: newVisitors });
+}
