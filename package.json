@@ -8,11 +8,8 @@
   },
   "dependencies": {
     "express": "3.4.8",
-    "jade": "*",
     "socket.io": "^0.9.16",
-    "handlebars": "^2.0.0-alpha.2",
     "express-hbs": "^0.7.9",
     "googleapis": "^0.6.1",
-    "google-oauth-jwt": "^0.1.3"
   }
 }
