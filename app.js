@@ -75,7 +75,7 @@ auth.authorize(function(err, tokens) {
   if (!err) {
     // start polling
     console.log('Polling started');
-    timeout = setInterval(getData, 30000);
+    startPolling();
   }
 
 });
@@ -84,6 +84,12 @@ auth.authorize(function(err, tokens) {
 /*
  * Helpers
  */
+function startPolling() {
+  getData();
+
+  setTimeout(arguments.callee, 5000);
+}
+
 function getData() {
 
   console.log('Fetching Active Visitors');
