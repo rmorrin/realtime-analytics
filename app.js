@@ -9,8 +9,7 @@ var http = require('http');
 var path = require('path');
 var io = require('socket.io');
 var hbs = require('express-hbs');
-var googleapis = require('googleapis');
-
+var analytics = require('./lib/analytics');
 
 /*
  * Express setup
@@ -59,60 +58,24 @@ io.sockets.on('connection', function(socket) {
 
 });
 
+
 /*
- * Google auth
+ * Authorize with google and start polling
  */
-var timeout;
-var auth = new googleapis.auth.JWT(
-  'EMAIL_HERE',
-  'key.pem',
-  'KEY_HERE',
-  ['https://www.googleapis.com/auth/analytics.readonly']
-);
-
-auth.authorize(function(err, tokens) {
-
-  if (!err) {
-    // start polling
-    console.log('Polling started');
-    startPolling();
-  }
-
+analytics.authorize(function(authClient) {
+  console.log('Polling started');
+  fetch();
 });
 
 
 /*
  * Helpers
  */
-function startPolling() {
-  getData();
+function fetch() {
 
-  setTimeout(arguments.callee, 5000);
-}
-
-function getData() {
-
-  console.log('Fetching Active Visitors');
-
-  googleapis.discover('analytics', 'v3').execute(function(err, client) {
-
-    var resp = client.analytics.data.realtime
-    .get({ ids: 'PROFILE_HERE', metrics: 'ga:activeVisitors'})
-    .withAuthClient(auth)
-    .execute(function(err, resp) {
-
-      if (!err) {
-        console.log('Visitors: ' + resp.totalsForAllResults['ga:activeVisitors']);
-        broadcast(resp.totalsForAllResults['ga:activeVisitors']);
-      }
-
-
-    });
-
+  analytics.getData(function (data) {
+    io.sockets.emit('visitors', { visitors: data });
+    setTimeout(fetch, 5000);
   });
 
-}
-
-function broadcast (newVisitors) {
-  io.sockets.emit('visitors', { visitors: newVisitors });
 }
