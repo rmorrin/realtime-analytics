@@ -62,9 +62,13 @@ io.sockets.on('connection', function(socket) {
 /*
  * Authorize with google and start polling
  */
-analytics.authorize(function(authClient) {
+analytics.authorize()
+.then(function (response) {
   console.log('Polling started');
   fetch();
+})
+.catch(function (error) {
+  console.log(error);
 });
 
 
@@ -73,9 +77,13 @@ analytics.authorize(function(authClient) {
  */
 function fetch() {
 
-  analytics.getData(function (data) {
+  analytics.getData()
+  .then(function (data) {
     io.sockets.emit('visitors', { visitors: data });
     setTimeout(fetch, 5000);
+  })
+  .catch(function (err) {
+    console.log(err);
   });
 
 }
